@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Planer putovanja</string>
+
+    <!-- Glavni ekran -->
+    <string name="new_trip">Novo putovanje</string>
+    <string name="empty_trips">Još nemate sačuvanih putovanja.\nDodirnite „Novo putovanje“ da napravite prvi plan.</string>
+    <string name="delete_trip_title">Brisanje putovanja</string>
+    <string name="delete_trip_message">Da li želite da obrišete putovanje „%1$s“?</string>
+    <string name="delete">Obriši</string>
+    <string name="cancel">Otkaži</string>
+    <string name="trip_info">%1$s · %2$s · %3$s</string>
+    <string name="date_range">%1$s – %2$s</string>
+    <plurals name="days_count">
+        <item quantity="one">%d dan</item>
+        <item quantity="few">%d dana</item>
+        <item quantity="other">%d dana</item>
+    </plurals>
+
+    <!-- Upitnik -->
+    <string name="question_progress">Pitanje %1$d od %2$d</string>
+    <string name="back">Nazad</string>
+    <string name="next">Dalje</string>
+    <string name="generate_plan">Generiši plan</string>
+    <string name="answer_hint">Vaš odgovor</string>
+    <string name="choose_date">Izaberite datum</string>
+    <string name="loading_plan">Pravimo vaš plan…</string>
+    <string name="error_title">Greška</string>
+    <string name="error_network">Nije moguće povezati se sa serverom. Proverite internet vezu i API ključ.</string>
+    <string name="error_response">Server je vratio neispravan odgovor.</string>
+    <string name="try_again">Pokušaj ponovo</string>
+
+    <string name="q_destination_title">Destinacija</string>
+    <string name="q_destination_description">Kuda putujete? Na primer: Rim, Italija</string>
+    <string name="q_days_title">Broj dana</string>
+    <string name="q_days_description">Koliko dana traje putovanje? (od 1 do 14)</string>
+    <string name="q_date_title">Datum polaska</string>
+    <string name="q_date_description">Kada krećete na put?</string>
+    <string name="q_style_title">Tip putovanja</string>
+    <string name="q_style_description">Kakvo putovanje želite?</string>
+    <string name="q_budget_title">Budžet</string>
+    <string name="q_budget_description">Koliko želite da potrošite?</string>
+    <string name="q_food_title">Omiljena hrana</string>
+    <string name="q_food_description">Šta najviše volite da jedete?</string>
+    <string name="q_accommodation_title">Smeštaj</string>
+    <string name="q_accommodation_description">Gde želite da odsednete?</string>
+    <string name="q_company_title">Putujem</string>
+    <string name="q_company_description">Sa kim putujete?</string>
+
+    <string-array name="q_style_options">
+        <item>Aktivno razgledanje</item>
+        <item>Opušteno uživanje</item>
+        <item>Kombinovano</item>
+    </string-array>
+    <string-array name="q_budget_options">
+        <item>Nizak</item>
+        <item>Srednji</item>
+        <item>Visok</item>
+    </string-array>
+    <string-array name="q_food_options">
+        <item>Lokalna tradicionalna</item>
+        <item>Ulična hrana</item>
+        <item>Fine dining</item>
+        <item>Vegetarijanska</item>
+    </string-array>
+    <string-array name="q_accommodation_options">
+        <item>Hostel</item>
+        <item>Hotel</item>
+        <item>Apartman</item>
+    </string-array>
+    <string-array name="q_company_options">
+        <item>Sam/a</item>
+        <item>Sa partnerom</item>
+        <item>Sa prijateljima</item>
+        <item>Sa porodicom</item>
+    </string-array>
+
+    <!-- Plan putovanja -->
+    <string name="trip_plan">Plan putovanja</string>
+    <string name="add_to_calendar">Dodaj u kalendar</string>
+    <string name="day_header">Dan %1$d</string>
+    <string name="note_label">Beleška: %1$s</string>
+    <string name="note_title">Beleška</string>
+    <string name="note_hint">Upišite svoju belešku</string>
+    <string name="save">Sačuvaj</string>
+    <string name="trip_not_found">Putovanje nije pronađeno.</string>
+    <string name="type_icon_sight">🏛️</string>
+    <string name="type_icon_food">🍽️</string>
+    <string name="type_icon_accommodation">🏨</string>
+    <string name="type_icon_activity">🎯</string>
+
+    <!-- Kalendar -->
+    <string name="calendar_event_title">Putovanje: %1$s</string>
+    <string name="calendar_added">Putovanje je dodato u kalendar.</string>
+    <string name="calendar_not_found">Na uređaju nije pronađen nijedan kalendar. Dodajte nalog sa kalendarom pa pokušajte ponovo.</string>
+    <string name="calendar_permission_denied">Bez dozvole za kalendar nije moguće dodati putovanje.</string>
+
+    <!-- Notifikacije -->
+    <string name="notification_channel_name">Planovi putovanja</string>
+    <string name="notification_title">Vaš plan putovanja je spreman</string>
+</resources>

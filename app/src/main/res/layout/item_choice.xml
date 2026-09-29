@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Velika kartica za jednu ponuđenu opciju u upitniku. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.Material3.CardView.Outlined"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:checkable="true"
+    app:cardCornerRadius="@dimen/card_corner_radius"
+    app:strokeColor="@color/choice_stroke"
+    app:strokeWidth="2dp">
+
+    <TextView
+        android:id="@+id/choice_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+</com.google.android.material.card.MaterialCardView>

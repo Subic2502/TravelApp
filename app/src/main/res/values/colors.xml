@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#00696B</color>
+    <color name="accent_container">#CDEBEA</color>
+    <color name="accent_dark">#002020</color>
+    <color name="white">#FFFFFF</color>
+    <color name="background">#F3F6F6</color>
+    <color name="surface_container_low">#F1F4F4</color>
+    <color name="surface_container">#EBEFEF</color>
+    <color name="surface_container_high">#E5E9E9</color>
+    <color name="surface_container_highest">#DFE3E3</color>
+    <color name="outline">#BFC8C8</color>
+</resources>
