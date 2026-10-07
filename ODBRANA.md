@@ -4,8 +4,8 @@
 
 1. **MainActivity** prikazuje listu sačuvanih putovanja (TripListFragment). Dugme „Novo putovanje“ otvara upitnik.
 2. **QuestionnaireActivity** postavlja 8 pitanja, jedno po ekranu. Odgovori se čuvaju u nizu `answers`.
-3. Na „Generiši plan“ pokreće se pozadinski zadatak. **GeminiService** šalje odgovore Gemini API-ju i dobija plan u JSON formatu.
-4. Isti pozadinski zadatak upisuje plan u SQLite bazu (**DatabaseHelper**) i prikazuje notifikaciju (**NotificationHelper**).
+3. Na „Generiši plan“ pokreće se **PlanGenerationService** (foreground servis). On na pozadinskoj niti preko **GeminiService** šalje odgovore Gemini API-ju i dobija plan u JSON formatu.
+4. Servis upisuje plan u SQLite bazu (**DatabaseHelper**) i prikazuje notifikaciju (**NotificationHelper**). Sve ovo radi i ako korisnik napusti aplikaciju.
 5. Aplikacija otvara novi plan. Na telefonu se otvara TripDetailActivity, a na tabletu se plan prikazuje desno od liste.
 6. U planu korisnik štiklira završene stavke, dodaje beleške i dodaje putovanje u kalendar (**CalendarHelper**).
 
@@ -26,22 +26,26 @@
 - **Objašnjenje:** U `onCreate()` pravimo dve tabele, `trips` i `plan_items`. Stavka plana preko `trip_id` pokazuje na putovanje, sa `ON DELETE CASCADE`. U `onConfigure()` uključujemo strane ključeve, jer ih SQLite podrazumevano ne proverava. `insertTripWithItems()` upisuje putovanje i sve stavke u jednoj transakciji: ili se upiše sve, ili ništa. Postoje i metode `getAllTrips()`, `getTrip()`, `getPlanItems()`, `setItemDone()`, `updateItemNote()` i `deleteTrip()`.
 
 ### 4. Niti (threads)
-- **Fajl:** `AppExecutor.java`. Koristi se u `QuestionnaireActivity.startGeneration()`, `TripListFragment.loadTrips()` i `TripDetailFragment.loadTrip()`.
+- **Fajl:** `AppExecutor.java`. Koristi se u `PlanGenerationService.onStartCommand()`, `TripListFragment.loadTrips()` i `TripDetailFragment.loadTrip()`.
 - **Objašnjenje:** U celoj aplikaciji postoji jedan `ExecutorService`, bazen od 4 pozadinske niti. Sav rad sa mrežom i bazom ide kroz `runInBackground()`. Samo glavna (UI) nit sme da menja prikaz. Zato rezultat vraćamo metodom `runOnMainThread()`, koja koristi `new Handler(Looper.getMainLooper())`. Pre prikaza rezultata proveravamo da li ekran još postoji (`isAdded()`, `isDestroyed()`).
 
 ### 5. Notifikacije
-- **Fajl:** `NotificationHelper.java`, metode `createChannel()`, `showPlanReady()`, `createOpenTripIntent()`. Dozvolu traži `MainActivity.requestNotificationPermission()`.
-- **Objašnjenje:** Od Androida 8 svaka notifikacija mora pripadati kanalu, zato prvo pravimo kanal. Od Androida 13 dozvola `POST_NOTIFICATIONS` traži se u toku rada aplikacije. `PendingIntent` sistemu kaže šta da uradi na dodir: otvara `MainActivity` sa ID-jem putovanja, a ona prikazuje taj plan. Notifikacija se prikazuje iz pozadinskog zadatka, pa stiže čak i ako je korisnik napustio ekran.
+- **Fajl:** `NotificationHelper.java`, metode `createChannel()`, `createProgressNotification()`, `showPlanReady()`, `createOpenTripIntent()`. Dozvolu traži `MainActivity.requestNotificationPermission()`.
+- **Objašnjenje:** Od Androida 8 svaka notifikacija mora pripadati kanalu, zato prvo pravimo kanal. Od Androida 13 dozvola `POST_NOTIFICATIONS` traži se u toku rada aplikacije. `PendingIntent` sistemu kaže šta da uradi na dodir: otvara `MainActivity` sa ID-jem putovanja, a ona prikazuje taj plan. Notifikaciju prikazuje servis kada sačuva plan, pa ona stiže i ako je korisnik napustio aplikaciju.
 
 ### 6. Content Provider (kalendar)
 - **Fajl:** `CalendarHelper.java`, metode `addTripToCalendar()` i `findFirstCalendarId()`. Dozvole traži `TripDetailFragment.onCalendarClick()`.
 - **Objašnjenje:** Kalendar je druga aplikacija, i svoje podatke deli preko Content Provider-a. Mi mu pristupamo preko `ContentResolver`-a. Prvo upitom nad `CalendarContract.Calendars` nalazimo ID prvog kalendara. Zatim metodom `insert(CalendarContract.Events.CONTENT_URI, values)` dodajemo celodnevni događaj „Putovanje: <destinacija>“. Potrebne su dozvole `READ_CALENDAR` i `WRITE_CALENDAR`. Ako kalendar ne postoji, prikazujemo Toast poruku.
 
+### Dodatno: Foreground servis
+- **Fajl:** `PlanGenerationService.java`, metode `start()`, `onStartCommand()`, `generateAndSavePlan()`, `setListener()`. Servis je prijavljen u `AndroidManifest.xml` (`foregroundServiceType="dataSync"`).
+- **Objašnjenje:** Od Androida 15 aplikacija u pozadini gubi pristup internetu, a ubrzo je sistem i zamrzava. Običan pozadinski thread bi zato prekinuo poziv Gemini API-ju čim korisnik izađe iz aplikacije. Foreground servis kaže sistemu: „radim nešto važno“ i za to vreme prikazuje notifikaciju „Pravimo vaš plan…“. Zauzvrat ga sistem ne zamrzava i ne blokira mu mrežu. Kada završi, servis čuva rezultat i javlja ga aktivnosti preko interfejsa `Listener`, ako je ekran otvoren. Ako ekran nije otvoren, rezultat čeka dok se korisnik ne vrati.
+
 ---
 
 ## Ostale bitne stvari
 
-- **Upitnik u jednoj aktivnosti:** pitanja su `List<Question>`. `showQuestion()` prikazuje samo ulaz koji odgovara tipu pitanja (TEXT, NUMBER, DATE ili CHOICE). Indeks, odgovori i datum čuvaju se u `onSaveInstanceState()`, pa rotacija ne gubi napredak. Dok traje generisanje, orijentacija je zaključana.
+- **Upitnik u jednoj aktivnosti:** pitanja su `List<Question>`. `showQuestion()` prikazuje samo ulaz koji odgovara tipu pitanja (TEXT, NUMBER, DATE ili CHOICE). Indeks, odgovori, datum i stanje učitavanja čuvaju se u `onSaveInstanceState()`, pa rotacija ne gubi napredak.
 - **„Dan X“ u listi:** u `PlanItemAdapter.onBindViewHolder()` naslov dana je vidljiv samo kada se dan razlikuje od prethodne stavke.
 - **Datumi:** čuvaju se kao milisekunde u UTC ponoći, jer ih tako vraća `MaterialDatePicker`.
 
@@ -63,6 +67,9 @@ Looper glavne niti je red poruka koje glavna nit obrađuje jednu po jednu. Sa `h
 
 **5. Zašto transakcija u `insertTripWithItems()` i šta radi `ON DELETE CASCADE`?**
 Putovanje i njegove stavke čine celinu. Ako bi upis pukao na pola, u bazi bi ostalo putovanje bez plana, a transakcija to sprečava. `ON DELETE CASCADE` znači da brisanje putovanja automatski briše i sve njegove stavke. Zato `deleteTrip()` briše samo jedan red.
+
+**Dodatno: Zašto vam treba foreground servis, kad već imate ExecutorService?**
+ExecutorService samo pravi pozadinsku nit unutar procesa aplikacije. Kada korisnik izađe iz aplikacije, Android tom procesu blokira internet i zamrzava ga, pa nit staje. Foreground servis drži proces „važnim“ dok posao ne završi. Nit iz ExecutorService-a i dalje radi sam posao, a servis samo obezbeđuje da je sistem ne zaustavi.
 
 **Dodatno: Zašto se API ključ ne piše u kod?**
 Kod ide na git, pa bi ključ bio javan. `local.properties` se ne šalje na git. Gradle pri build-u pravi `BuildConfig.GEMINI_API_KEY` iz tog fajla.

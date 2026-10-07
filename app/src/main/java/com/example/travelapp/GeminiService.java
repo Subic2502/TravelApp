@@ -20,7 +20,7 @@ import java.util.List;
 public class GeminiService {
 
     // Naziv modela; može se promeniti ako Google preimenuje besplatne modele.
-    private static final String MODEL = "gemini-2.5-flash";
+    private static final String MODEL = "gemini-3.5-flash";
     private static final String ENDPOINT =
             "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
     private static final int CONNECT_TIMEOUT_MS = 15000;
@@ -62,17 +62,17 @@ public class GeminiService {
         }
     }
 
-    public PlanResult generatePlan(List<Question> questions, String[] answers)
+    public PlanResult generatePlan(String[] questionTitles, String[] answers)
             throws IOException, JSONException {
-        String requestBody = buildRequestBody(buildPrompt(questions, answers));
+        String requestBody = buildRequestBody(buildPrompt(questionTitles, answers));
         String response = sendRequest(requestBody);
         return parseResponse(response);
     }
 
-    private String buildPrompt(List<Question> questions, String[] answers) {
+    private String buildPrompt(String[] questionTitles, String[] answers) {
         StringBuilder prompt = new StringBuilder(PROMPT_INTRO);
-        for (int i = 0; i < questions.size(); i++) {
-            prompt.append("- ").append(questions.get(i).getTitle())
+        for (int i = 0; i < questionTitles.length; i++) {
+            prompt.append("- ").append(questionTitles[i])
                     .append(": ").append(answers[i]).append('\n');
         }
         return prompt.append(PROMPT_RULES).toString();

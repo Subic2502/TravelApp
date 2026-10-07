@@ -1,8 +1,6 @@
 package com.example.travelapp;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
@@ -24,33 +22,27 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
-import org.json.JSONException;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 // Upitnik: jedna aktivnost i jedan layout; sadržaj se menja za svako pitanje.
-public class QuestionnaireActivity extends AppCompatActivity {
+public class QuestionnaireActivity extends AppCompatActivity
+        implements PlanGenerationService.Listener {
 
     private static final String KEY_INDEX = "current_index";
     private static final String KEY_ANSWERS = "answers";
     private static final String KEY_START_DATE = "start_date";
+    private static final String KEY_LOADING = "loading";
     private static final String DATE_PICKER_TAG = "date_picker";
     private static final long ANIMATION_DURATION_MS = 250;
     private static final int MIN_DAYS = 1;
     private static final int MAX_DAYS = 14;
 
-    // Redni brojevi pitanja čiji se odgovori čuvaju i u bazi.
-    private static final int Q_DESTINATION = 0;
-    private static final int Q_DAYS = 1;
-    private static final int Q_STYLE = 3;
-    private static final int Q_BUDGET = 4;
-
     private List<Question> questions;
     private String[] answers;
     private int currentIndex;
     private long startDateMillis;
+    private boolean isLoading;
 
     private View contentLayout;
     private View loadingLayout;
@@ -78,11 +70,28 @@ public class QuestionnaireActivity extends AppCompatActivity {
             currentIndex = savedInstanceState.getInt(KEY_INDEX);
             answers = savedInstanceState.getStringArray(KEY_ANSWERS);
             startDateMillis = savedInstanceState.getLong(KEY_START_DATE);
+            isLoading = savedInstanceState.getBoolean(KEY_LOADING);
         }
 
         progressIndicator.setMax(questions.size());
         setupListeners();
         showQuestion();
+        showLoading(isLoading);
+    }
+
+    // Rezultat servisa slušamo samo dok je ekran vidljiv.
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (isLoading) {
+            PlanGenerationService.setListener(this);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        PlanGenerationService.setListener(null);
     }
 
     // Čuvamo napredak da se ne izgubi pri rotaciji ekrana.
@@ -92,6 +101,7 @@ public class QuestionnaireActivity extends AppCompatActivity {
         outState.putInt(KEY_INDEX, currentIndex);
         outState.putStringArray(KEY_ANSWERS, answers);
         outState.putLong(KEY_START_DATE, startDateMillis);
+        outState.putBoolean(KEY_LOADING, isLoading);
     }
 
     private void bindViews() {
@@ -299,42 +309,23 @@ public class QuestionnaireActivity extends AppCompatActivity {
         imm.hideSoftInputFromWindow(answerInput.getWindowToken(), 0);
     }
 
-    // Pokreće pozadinski zadatak. Glavna nit ostaje slobodna i prikazuje učitavanje.
+    // Generisanje prepuštamo servisu, koji radi i kada korisnik napusti aplikaciju.
     private void startGeneration() {
         showLoading(true);
-        Context appContext = getApplicationContext();
-        String[] answersCopy = answers.clone();
-        long startDate = startDateMillis;
-
-        AppExecutor.runInBackground(() -> {
-            try {
-                long tripId = generateAndSavePlan(appContext, answersCopy, startDate);
-                AppExecutor.runOnMainThread(() -> onPlanReady(tripId));
-            } catch (IOException e) {
-                AppExecutor.runOnMainThread(() -> showError(R.string.error_network));
-            } catch (JSONException e) {
-                AppExecutor.runOnMainThread(() -> showError(R.string.error_response));
-            }
-        });
+        PlanGenerationService.start(this, getQuestionTitles(), answers.clone(), startDateMillis);
+        PlanGenerationService.setListener(this);
     }
 
-    // Izvršava se na pozadinskoj niti: poziv Gemini API-ja, upis u bazu i notifikacija.
-    // Zato je plan sačuvan čak i ako korisnik u međuvremenu napusti ekran.
-    private long generateAndSavePlan(Context context, String[] answers, long startDate)
-            throws IOException, JSONException {
-        GeminiService.PlanResult plan = new GeminiService().generatePlan(questions, answers);
-        Trip trip = new Trip(0, answers[Q_DESTINATION], Integer.parseInt(answers[Q_DAYS]),
-                startDate, answers[Q_STYLE], answers[Q_BUDGET], plan.getSummary(),
-                System.currentTimeMillis());
-        long tripId = DatabaseHelper.getInstance(context).insertTripWithItems(trip, plan.getItems());
-        NotificationHelper.showPlanReady(context, tripId, trip.getDestination());
-        return tripId;
-    }
-
-    private void onPlanReady(long tripId) {
-        if (isDestroyed()) {
-            return;
+    private String[] getQuestionTitles() {
+        String[] titles = new String[questions.size()];
+        for (int i = 0; i < questions.size(); i++) {
+            titles[i] = questions.get(i).getTitle();
         }
+        return titles;
+    }
+
+    @Override
+    public void onPlanReady(long tripId) {
         Intent intent = new Intent(this, MainActivity.class)
                 .putExtra(MainActivity.EXTRA_TRIP_ID, tripId)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -342,25 +333,25 @@ public class QuestionnaireActivity extends AppCompatActivity {
         finish();
     }
 
+    @Override
+    public void onPlanFailed(int messageRes) {
+        showLoading(false);
+        showError(messageRes);
+    }
+
     private void showError(int messageRes) {
-        if (isDestroyed()) {
-            return;
-        }
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.error_title)
                 .setMessage(messageRes)
                 .setCancelable(false)
                 .setPositiveButton(R.string.try_again, (dialog, which) -> startGeneration())
-                .setNegativeButton(R.string.cancel, (dialog, which) -> showLoading(false))
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
-    // Dok traje generisanje zaključavamo orijentaciju, da se aktivnost ne bi ponovo kreirala.
     private void showLoading(boolean loading) {
+        isLoading = loading;
         contentLayout.setVisibility(loading ? View.GONE : View.VISIBLE);
         loadingLayout.setVisibility(loading ? View.VISIBLE : View.GONE);
-        setRequestedOrientation(loading
-                ? ActivityInfo.SCREEN_ORIENTATION_LOCKED
-                : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 }
